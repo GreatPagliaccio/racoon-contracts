@@ -7,7 +7,7 @@ import "./libs/IBEP20.sol";
 import "./libs/SafeBEP20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./VikingToken.sol";
+import "./RacoonToken.sol";
 
 // MasterChef is the master of Egg. He can make Egg and he is a fair guy.
 //
@@ -25,13 +25,13 @@ contract MasterChef is Ownable {
         uint256 amount;         // How many LP tokens the user has provided.
         uint256 rewardDebt;     // Reward debt. See explanation below.
         //
-        // We do some fancy math here. Basically, any point in time, the amount of EGGs
+        // We do some fancy math here. Basically, any point in time, the amount of Racoons
         // entitled to a user but is pending to be distributed is:
         //
-        //   pending reward = (user.amount * pool.accEggPerShare) - user.rewardDebt
+        //   pending reward = (user.amount * pool.accRacoonPerShare) - user.rewardDebt
         //
         // Whenever a user deposits or withdraws LP tokens to a pool. Here's what happens:
-        //   1. The pool's `accEggPerShare` (and `lastRewardBlock`) gets updated.
+        //   1. The pool's `accRacoonPerShare` (and `lastRewardBlock`) gets updated.
         //   2. User receives the pending reward sent to his/her address.
         //   3. User's `amount` gets updated.
         //   4. User's `rewardDebt` gets updated.
@@ -41,17 +41,17 @@ contract MasterChef is Ownable {
     struct PoolInfo {
         IBEP20 lpToken;           // Address of LP token contract.
         uint256 allocPoint;       // How many allocation points assigned to this pool. EGGs to distribute per block.
-        uint256 lastRewardBlock;  // Last block number that EGGs distribution occurs.
-        uint256 accEggPerShare;   // Accumulated EGGs per share, times 1e12. See below.
+        uint256 lastRewardBlock;  // Last block number that Racoons distribution occurs.
+        uint256 accRacoonPerShare;   // Accumulated EGGs per share, times 1e12. See below.
         uint16 depositFeeBP;      // Deposit fee in basis points
     }
 
     // The EGG TOKEN!
-    VikingToken public viking;
+    RacoonToken public racoon;
     // Dev address.
     address public devaddr;
     // EGG tokens created per block.
-    uint256 public vikingPerBlock;
+    uint256 public racoonPerBlock;
     // Bonus muliplier for early viking makers.
     uint256 public constant BONUS_MULTIPLIER = 1;
     // Deposit Fee address
@@ -71,16 +71,16 @@ contract MasterChef is Ownable {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
     constructor(
-        VikingToken _viking,
+        RacoonToken _racoon,
         address _devaddr,
         address _feeAddress,
-        uint256 _vikingPerBlock,
+        uint256 _racoonPerBlock,
         uint256 _startBlock
     ) public {
-        viking = _viking;
+        racoon = _racoon;
         devaddr = _devaddr;
         feeAddress = _feeAddress;
-        vikingPerBlock = _vikingPerBlock;
+        racoonPerBlock = _racoonPerBlock;
         startBlock = _startBlock;
     }
 
@@ -101,7 +101,7 @@ contract MasterChef is Ownable {
             lpToken: _lpToken,
             allocPoint: _allocPoint,
             lastRewardBlock: lastRewardBlock,
-            accEggPerShare: 0,
+            accRacoonPerShare: 0,
             depositFeeBP: _depositFeeBP
         }));
     }
@@ -126,14 +126,14 @@ contract MasterChef is Ownable {
     function pendingEgg(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accEggPerShare = pool.accEggPerShare;
+        uint256 accRacoonPerShare = pool.accRacoonPerShare;
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 vikingReward = multiplier.mul(vikingPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-            accEggPerShare = accEggPerShare.add(vikingReward.mul(1e12).div(lpSupply));
+            uint256 racoonReward = multiplier.mul(racoonPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+            accRacoonPerShare = accRacoonPerShare.add(racoonReward.mul(1e12).div(lpSupply));
         }
-        return user.amount.mul(accEggPerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(accRacoonPerShare).div(1e12).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -156,10 +156,10 @@ contract MasterChef is Ownable {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 vikingReward = multiplier.mul(vikingPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
-        viking.mint(devaddr, vikingReward.div(10));
-        viking.mint(address(this), vikingReward);
-        pool.accEggPerShare = pool.accEggPerShare.add(vikingReward.mul(1e12).div(lpSupply));
+        uint256 racoonReward = multiplier.mul(racoonPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        racoon.mint(devaddr, racoonReward.div(10));
+        racoon.mint(address(this), racoonReward);
+        pool.accRacoonPerShare = pool.accRacoonPerShare.add(racoonReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
 
@@ -169,9 +169,9 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accEggPerShare).div(1e12).sub(user.rewardDebt);
+            uint256 pending = user.amount.mul(pool.accRacoonPerShare).div(1e12).sub(user.rewardDebt);
             if(pending > 0) {
-                safeEggTransfer(msg.sender, pending);
+                safeRacoonTransfer(msg.sender, pending);
             }
         }
         if(_amount > 0) {
@@ -184,7 +184,7 @@ contract MasterChef is Ownable {
                 user.amount = user.amount.add(_amount);
             }
         }
-        user.rewardDebt = user.amount.mul(pool.accEggPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accRacoonPerShare).div(1e12);
         emit Deposit(msg.sender, _pid, _amount);
     }
 
@@ -194,15 +194,15 @@ contract MasterChef is Ownable {
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accEggPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accRacoonPerShare).div(1e12).sub(user.rewardDebt);
         if(pending > 0) {
-            safeEggTransfer(msg.sender, pending);
+            safeRacoonTransfer(msg.sender, pending);
         }
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.lpToken.safeTransfer(address(msg.sender), _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accEggPerShare).div(1e12);
+        user.rewardDebt = user.amount.mul(pool.accRacoonPerShare).div(1e12);
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
@@ -218,12 +218,12 @@ contract MasterChef is Ownable {
     }
 
     // Safe viking transfer function, just in case if rounding error causes pool to not have enough EGGs.
-    function safeEggTransfer(address _to, uint256 _amount) internal {
-        uint256 vikingBal = viking.balanceOf(address(this));
-        if (_amount > vikingBal) {
-            viking.transfer(_to, vikingBal);
+    function safeRacoonTransfer(address _to, uint256 _amount) internal {
+        uint256 racoonBal = racoon.balanceOf(address(this));
+        if (_amount > racoonBal) {
+            racoon.transfer(_to, racoonBal);
         } else {
-            viking.transfer(_to, _amount);
+            racoon.transfer(_to, _amount);
         }
     }
 
@@ -232,15 +232,16 @@ contract MasterChef is Ownable {
         require(msg.sender == devaddr, "dev: wut?");
         devaddr = _devaddr;
     }
-
+    /*
     function setFeeAddress(address _feeAddress) public{
         require(msg.sender == feeAddress, "setFeeAddress: FORBIDDEN");
         feeAddress = _feeAddress;
     }
 
     //Pancake has to add hidden dummy pools inorder to alter the emission, here we make it simple and transparent to all.
-    function updateEmissionRate(uint256 _vikingPerBlock) public onlyOwner {
+    function updateEmissionRate(uint256 _racoonPerBlock) public onlyOwner {
         massUpdatePools();
-        vikingPerBlock = _vikingPerBlock;
+        racoonPerBlock = _racoonPerBlock;
     }
+    */
 }

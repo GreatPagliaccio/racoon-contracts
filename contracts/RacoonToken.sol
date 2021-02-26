@@ -3,7 +3,7 @@ pragma solidity 0.6.12;
 import "./libs/BEP20.sol";
 
 // EggToken with Governance.
-contract VikingToken is BEP20('VikingSwap Token', 'VIKING') {
+contract RacoonToken is BEP20('Racoon Token', 'RACOON') {
     /// @notice Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);
@@ -58,9 +58,7 @@ contract VikingToken is BEP20('VikingSwap Token', 'VIKING') {
         return _delegates[delegator];
     }
 
-   /**
-    * @notice Delegate votes from `msg.sender` to `delegatee`
-    * @param delegatee The address to delegate votes to
+   /**VikingToken
     */
     function delegate(address delegatee) external {
         return _delegate(msg.sender, delegatee);
